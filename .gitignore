@@ -5,3 +5,4 @@ node_modules/
 .code-search/
 .codeinsight
 *.stackdump
+.gm-stop-verified

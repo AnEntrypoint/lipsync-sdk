@@ -1,1 +1,7 @@
 node_modules/
+.plugkit-browser-profile/
+.plugkit-browser-profile-*/
+.plugkit-agent-worktree/
+.code-search/
+.codeinsight
+*.stackdump

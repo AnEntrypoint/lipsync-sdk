@@ -6,6 +6,39 @@ import { LipsyncFr } from './modules/lipsync-fr.mjs';
 
 const LANG_CTORS = { en: LipsyncEn, fi: LipsyncFi, de: LipsyncDe, fr: LipsyncFr };
 
+// Estimate word timings from text + total audio duration when no TTS timestamps available.
+// Distributes duration proportionally by syllable count (vowel runs), not raw chars.
+// Returns: { words, wtimes, wdurations } all in ms.
+export function estimateWordTimings(text, durationMs) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return { words: [], wtimes: [], wdurations: [] };
+  const syllables = words.map(w => Math.max(1, (w.match(/[aeiouAEIOU]+/g) || []).length));
+  const total = syllables.reduce((a, b) => a + b, 0);
+  const wtimes = [], wdurations = [];
+  let t = 0;
+  for (let i = 0; i < words.length; i++) {
+    const dur = (syllables[i] / total) * durationMs;
+    wtimes.push(t);
+    wdurations.push(dur);
+    t += dur;
+  }
+  return { words, wtimes, wdurations };
+}
+
+// Build a fixed-fps blendshape frame array (Float32Array per frame) from a track.
+// Compatible with diagen's buildAfan() which expects Float32Array[52] per frame.
+export function trackToFrames(sdk, track, durationMs, fps = 30) {
+  const numFrames = Math.ceil((durationMs / 1000) * fps);
+  const frames = [];
+  for (let i = 0; i < numFrames; i++) {
+    const t = (i / fps) * 1000;
+    const vec = sdk.sampleTrack(track, t);
+    sdk.applySmoothing(vec);
+    frames.push(vec);
+  }
+  return frames;
+}
+
 export class LipsyncSDKNode extends LipsyncCore {
   constructor({ langs = ['en'], smoothing = 0.35 } = {}) {
     super({ smoothing });
@@ -30,6 +63,15 @@ export class LipsyncSDKNode extends LipsyncCore {
       this.applySmoothing(vec);
       return { t, blendshapes: this.vecToBlendshapes(vec) };
     });
+  }
+
+  // Process text + audio duration → fixed-fps Float32Array frames (no timestamps needed).
+  // Useful when TTS returns audio without word timestamps.
+  processText(text, durationMs, { lang = 'en', fps = 30 } = {}) {
+    this.resetSmoothing();
+    const speechData = estimateWordTimings(text, durationMs);
+    const track = this.wordsToFrames({ ...speechData, lang });
+    return trackToFrames(this, track, durationMs, fps);
   }
 
   // Sample track at specific timestamps (ms array).

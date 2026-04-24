@@ -6,3 +6,4 @@ node_modules/
 .codeinsight
 *.stackdump
 .gm-stop-verified
+.talkinghead-upstream/

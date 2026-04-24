@@ -3,8 +3,9 @@ import { LipsyncEn } from './modules/lipsync-en.mjs';
 import { LipsyncFi } from './modules/lipsync-fi.mjs';
 import { LipsyncDe } from './modules/lipsync-de.mjs';
 import { LipsyncFr } from './modules/lipsync-fr.mjs';
+import { LipsyncLt } from './modules/lipsync-lt.mjs';
 
-const LANG_CTORS = { en: LipsyncEn, fi: LipsyncFi, de: LipsyncDe, fr: LipsyncFr };
+const LANG_CTORS = { en: LipsyncEn, fi: LipsyncFi, de: LipsyncDe, fr: LipsyncFr, lt: LipsyncLt };
 
 // Estimate word timings from text + total audio duration when no TTS timestamps available.
 // Distributes duration proportionally by syllable count (vowel runs), not raw chars.

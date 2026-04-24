@@ -1,8 +1,8 @@
 {
   "name": "lipsync-sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
-  "description": "Fast text-driven lipsync codec — ARKit blendshapes from word timestamps, no ML inference",
+  "description": "Fast text-driven lipsync codec — Oculus viseme word→blendshape conversion (TalkingHead-derived) plus ARKit mapping and AFAN binary streaming for downstream tools",
   "main": "lipsync-sdk-node.mjs",
   "browser": "lipsync-sdk-browser.js",
   "exports": {
@@ -10,13 +10,16 @@
       "browser": "./lipsync-sdk-browser.js",
       "default": "./lipsync-sdk-node.mjs"
     },
-    "./core": "./lipsync-core.mjs"
+    "./core": "./lipsync-core.mjs",
+    "./floosie": "./lipsync-floosie.mjs"
   },
   "files": [
     "lipsync-core.mjs",
     "lipsync-sdk-browser.js",
     "lipsync-sdk-node.mjs",
-    "modules/"
+    "lipsync-floosie.mjs",
+    "modules/",
+    "NOTICE"
   ],
   "keywords": [
     "lipsync",
@@ -24,7 +27,10 @@
     "arkit",
     "avatar",
     "tts",
-    "viseme"
+    "viseme",
+    "oculus",
+    "talkinghead",
+    "afan"
   ],
   "license": "MIT"
 }

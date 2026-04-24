@@ -1,6 +1,20 @@
-// Oculus viseme → ARKit blendshape weights
-// Each viseme maps to a sparse set of blendshape { name: weight } pairs
-// Weights derived from Meta Codec Avatar reference + empirical tuning
+// lipsync-sdk core — Oculus visemes → ARKit blendshape track.
+//
+// Word-to-viseme algorithm and per-viseme animation envelope derived from
+// met4citizen/TalkingHead (MIT License, © Mika Suominen).
+//   Source: https://github.com/met4citizen/TalkingHead
+//   See NOTICE for full attribution.
+//
+// TalkingHead emits visemes as morph targets named viseme_<id> (Oculus
+// LipSync names) directly into a GLB mesh that has those targets defined.
+// This SDK additionally maps each viseme to the equivalent ARKit blendshape
+// weights so the same lipsync data can drive ARKit-only avatars and stream
+// in the AFAN binary frame format consumed by other tools.
+//
+// The envelope below — three keyframes per viseme at t-2d/3, t+d/2,
+// t+d+d/2 with peak 0.9 for PP/FF and 0.6 otherwise — is the verbatim
+// timing TalkingHead uses in its viseme animation queue (talkinghead.mjs
+// _processLipsyncData / streamAudio paths).
 const VISEME_BLENDSHAPES = {
   sil: {},
   PP: { mouthClose: 0.8, mouthPressLeft: 0.5, mouthPressRight: 0.5, mouthRollLower: 0.3, mouthRollUpper: 0.3 },
@@ -147,10 +161,12 @@ export class LipsyncCore {
 
     for (const { viseme, t, d } of events) {
       const vec = VISEME_VECTORS[viseme] || VISEME_VECTORS.sil;
-      const tIn = t - Math.min(60, 2 * d / 3);
-      const tPeak = t + Math.min(25, d / 2);
-      const tOut = t + d + Math.min(60, d / 2);
-      const peak = (viseme === 'PP' || viseme === 'FF') ? 0.9 : 0.7;
+      // Envelope timing: verbatim talkinghead.mjs _processLipsyncData
+      // ramp-in / peak / ramp-out keyframe offsets.
+      const tIn = t - 2 * d / 3;
+      const tPeak = t + d / 2;
+      const tOut = t + d + d / 2;
+      const peak = (viseme === 'PP' || viseme === 'FF') ? 0.9 : 0.6;
 
       this._addKeyframe(keyframes, tIn, vec, 0);
       this._addKeyframe(keyframes, tPeak, vec, peak);

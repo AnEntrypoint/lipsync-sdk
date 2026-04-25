@@ -81,6 +81,16 @@ Frames:      numFrames × 52 bytes (uint8 blendshape values per frame)
 
 Refactor pattern: wrap LipsyncSDKNode output with buildAfan() serializer, preserve class API surface.
 
+**AFAN codec now lives in a2f**: `lipsync-afan.mjs` (commit 187dd7b) provides browser+node implementation using Uint8Array+DataView (no Buffer dependency). Exports buildAfan/parseAfan/afanChunks plus AFAN_MAGIC/AFAN_VERSION/AFAN_NUM_BS/AFAN_HEADER_BYTES constants. Byte-for-byte compatible with diagen/server-utils.mjs reference. Quantization float[0,1]→uint8 via `(v*255+0.5)|0` yields max roundtrip delta ~0.0019.
+
+## Floosie Operator: In-Tree, Not npm Dependency
+
+`lipsync-floosie.mjs` (~50 LOC) provides operator factory with pipe()/run() and standalone async-generator `lipsyncStream`. Do NOT add the `floosie` npm package (v0.6.4) as a dependency — its transitive deps (@agentclientprotocol/sdk, file-type, sflow, xstate, zod) are heavy and unnecessary. AFAN binary chunks are protocol-agnostic and flow through any stream framework.
+
+## Browser SDK API Gap
+
+`LipsyncSDK` (browser bundle) does NOT expose `processText` — that method exists only on `LipsyncSDKNode`. Browser consumers must build fixed-fps frame arrays manually via `wordsToFrames` + `sampleTrack` + `applySmoothing`. See `browser-test.html` for the reference loop. Port `processText` and `trackToFrames` into the browser bundle if consumers request it.
+
 ## Tooling Caveat: rs-exec Port Leak
 
 **When "Runner startup timed out" recurs despite `exec:runner status` reporting online:**
@@ -96,3 +106,7 @@ Get-Process -Id <pid>  # if "Process not found" → orphaned socket
 **Recovery**: Delete `$env:LOCALAPPDATA\Temp\glootie-runner.port`, stop/start runner. If socket persists, manual cleanup or port range reset may be needed.
 
 **Status**: Fixed in rs-exec @ f6a74a2 (bind to 127.0.0.1:0, atomic port_file). Related fix in rs-search @ d05d7bc (simd feature gate for MinGW).
+
+## Tooling Caveat: `exec:close` Unsupported
+
+`exec:close <id>` returns `Unsupported runtime: close` — it is not a valid way to stop background processes started via `run_in_background: true`. To stop a background HTTP server (e.g. the one used by `browser-test.html`), use `exec:kill-port <port>` instead. Recommended keepalive for background Node servers: `setInterval(()=>{}, 1000)`.

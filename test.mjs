@@ -1,6 +1,7 @@
 import { LipsyncSDKNode, estimateWordTimings, trackToFrames } from './lipsync-sdk-node.mjs';
 import { lipsyncStream } from './lipsync-floosie.mjs';
 import { buildAfan, parseAfan, afanChunks, AFAN_MAGIC, AFAN_HEADER_BYTES, AFAN_NUM_BS } from './lipsync-afan.mjs';
+import { FacialAnimationPlayer, AnimationReader, mapVisemes, mapEyes, mapEmotionsV1, vecToNamed, ARKIT_NAMES as VRM_NAMES } from './lipsync-vrm.mjs';
 import assert from 'assert';
 
 const sdk = new LipsyncSDKNode({ langs: ['en', 'fi', 'de', 'fr'] });
@@ -166,6 +167,58 @@ const sdk = new LipsyncSDKNode({ langs: ['en', 'fi', 'de', 'fr'] });
     total += numFrames;
   }
   assert.strictEqual(total, 60);
+}
+
+// ── VRM driver: mock expressionManager, drive frame, verify writes ───────
+{
+  const writes = new Map();
+  const exps = ['aa','ih','ou','ee','oh','blink','blinkLeft','blinkRight','lookUp','lookDown','lookLeft','lookRight','happy','sad','angry','relaxed','surprised'];
+  const vrm = {
+    meta: { specVersion: '1.0' },
+    expressionManager: {
+      expressions: exps.map(n => ({ expressionName: n })),
+      setValue(n, v) { writes.set(n, v); },
+      getValue(n) { return writes.get(n) || 0; },
+    },
+  };
+  const player = new FacialAnimationPlayer(vrm);
+  assert.strictEqual(player.vrmVersion, '1');
+  // Build AFAN with jaw open + smile, decode + apply
+  const v = new Float32Array(52);
+  v[VRM_NAMES.indexOf('jawOpen')] = 0.8;
+  v[VRM_NAMES.indexOf('mouthSmileLeft')] = 0.7;
+  v[VRM_NAMES.indexOf('mouthSmileRight')] = 0.7;
+  const afan = buildAfan([v, v, v], 30);
+  player.loadAnimation(afan);
+  assert.strictEqual(player.animation.fps, 30);
+  assert.strictEqual(player.animation.numFrames, 3);
+  player.applyFrame(player.animation.frames[0].blendshapes);
+  assert(writes.get('aa') > 0.4, `aa expected open, got ${writes.get('aa')}`);
+  assert(writes.get('happy') > 0.5, `happy expected, got ${writes.get('happy')}`);
+}
+
+// ── VRM driver: VRM0 detection by expression names ───────────────────────
+{
+  const v0Vrm = {
+    expressionManager: {
+      expressions: [{ expressionName: 'fun' }, { expressionName: 'sorrow' }, { expressionName: 'aa' }],
+      setValue() {}, getValue() { return 0; },
+    },
+  };
+  const player = new FacialAnimationPlayer(v0Vrm);
+  assert.strictEqual(player.vrmVersion, '0');
+}
+
+// ── End-to-end: text → AFAN → VRM driver ────────────────────────────────
+{
+  const frames = sdk.processText('hello vrm world', 1500, { fps: 30 });
+  const afan = buildAfan(frames, 30);
+  const reader = AnimationReader.fromAfanV2(afan);
+  assert.strictEqual(reader.numFrames, 45);
+  assert.strictEqual(reader.fps, 30);
+  // first frame named-key should have 52 entries
+  assert.strictEqual(Object.keys(reader.frames[0].blendshapes).length, 52);
+  assert(typeof reader.frames[0].blendshapes.jawOpen === 'number');
 }
 
 console.log('All tests passed.');

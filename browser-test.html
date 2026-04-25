@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>lipsync-sdk browser test</title></head>
+<body>
+<h1>lipsync-sdk browser test</h1>
+<pre id="log"></pre>
+<script type="module">
+const log = (...a) => { document.getElementById('log').textContent += a.join(' ') + '\n'; console.log(...a); };
+const assert = (cond, msg) => { if (!cond) { window.__test = { ok: false, error: msg }; throw new Error(msg); } };
+
+try {
+  const { LipsyncSDK } = await import('./lipsync-sdk-browser.js');
+  const { buildAfan, parseAfan, afanChunks, AFAN_MAGIC, AFAN_HEADER_BYTES, AFAN_NUM_BS } = await import('./lipsync-afan.mjs');
+
+  log('langs:', LipsyncSDK.SUPPORTED_LANGS.join(','));
+  assert(LipsyncSDK.BLENDSHAPE_NAMES.length === 52, 'expect 52 blendshapes');
+
+  const sdk = new LipsyncSDK({ langs: ['en','fi','de','fr','lt'] });
+
+  // wordsToFrames track
+  const speech = { words: ['hello','world'], wtimes: [0,400], wdurations: [350,350] };
+  const track = sdk.wordsToFrames({ ...speech, lang: 'en' });
+  assert(track.length > 0, 'track empty');
+  log('en track frames:', track.length);
+
+  // sample fixed-fps Float32Array frames manually (browser API has no processText)
+  const fps = 30, durMs = 1000;
+  const numFrames = Math.ceil(durMs / 1000 * fps);
+  sdk.resetSmoothing();
+  const t2 = sdk.wordsToFrames({ ...speech, lang: 'en' });
+  const frames = [];
+  for (let i = 0; i < numFrames; i++) {
+    const v = sdk.sampleTrack(t2, (i / fps) * 1000);
+    sdk.applySmoothing(v);
+    frames.push(v);
+  }
+  assert(frames.length === 30, 'frames len');
+  assert(frames[0] instanceof Float32Array && frames[0].length === 52, 'frame shape');
+
+  // AFAN encode / decode roundtrip
+  const buf = buildAfan(frames, fps);
+  assert(buf instanceof Uint8Array, 'buildAfan returns Uint8Array');
+  assert(buf.byteLength === AFAN_HEADER_BYTES + 30 * AFAN_NUM_BS, 'afan size');
+  const dv = new DataView(buf.buffer);
+  assert(dv.getUint32(0, true) === AFAN_MAGIC, 'afan magic');
+  log('afan bytes:', buf.byteLength, 'magic ok');
+
+  const { fps: fpsOut, numFrames: nfOut, frames: out } = parseAfan(buf);
+  assert(fpsOut === 30 && nfOut === 30, 'header roundtrip');
+  let maxDelta = 0;
+  for (let f = 0; f < 30; f++)
+    for (let i = 0; i < 52; i++)
+      maxDelta = Math.max(maxDelta, Math.abs(frames[f][i] - out[f][i]));
+  assert(maxDelta < 0.01, `quantization error too high: ${maxDelta}`);
+  log('roundtrip max delta:', maxDelta.toFixed(4));
+
+  // Streaming chunks
+  async function* gen() { for (const f of frames) yield f; }
+  const chunks = [];
+  for await (const c of afanChunks(gen(), fps, 10)) chunks.push(c);
+  assert(chunks.length === 3, `expected 3 chunks, got ${chunks.length}`);
+  let total = 0;
+  for (const c of chunks) total += parseAfan(c).numFrames;
+  assert(total === 30, 'chunked frame total');
+  log('chunks:', chunks.length, 'total frames:', total);
+
+  // Lithuanian smoke
+  const lt = sdk.wordsToFrames({ words: ['labas','pasauli'], wtimes: [0,400], wdurations: [400,500], lang: 'lt' });
+  assert(lt.length > 0, 'lt empty');
+  log('lt track frames:', lt.length);
+
+  log('OK');
+  window.__test = { ok: true, frames: frames.length, afanBytes: buf.byteLength, chunks: chunks.length, langs: LipsyncSDK.SUPPORTED_LANGS };
+} catch (e) {
+  log('FAIL:', e.message);
+  window.__test = { ok: false, error: e.message, stack: e.stack };
+}
+</script>
+</body>
+</html>

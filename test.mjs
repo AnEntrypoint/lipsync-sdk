@@ -1,5 +1,6 @@
 import { LipsyncSDKNode, estimateWordTimings, trackToFrames } from './lipsync-sdk-node.mjs';
 import { lipsyncStream } from './lipsync-floosie.mjs';
+import { buildAfan, parseAfan, afanChunks, AFAN_MAGIC, AFAN_HEADER_BYTES, AFAN_NUM_BS } from './lipsync-afan.mjs';
 import assert from 'assert';
 
 const sdk = new LipsyncSDKNode({ langs: ['en', 'fi', 'de', 'fr'] });
@@ -120,6 +121,51 @@ const sdk = new LipsyncSDKNode({ langs: ['en', 'fi', 'de', 'fr'] });
   assert(typeof frames[0].t === 'number');
   assert(Array.isArray(frames[0].blendshapes));
   assert.strictEqual(frames[0].blendshapes.length, 52);
+}
+
+// ── AFAN binary roundtrip ────────────────────────────────────────────────
+{
+  const frames = sdk.processText('hello binary world', 1000, { fps: 30 });
+  assert.strictEqual(frames.length, 30);
+  const buf = buildAfan(frames, 30);
+  assert(buf instanceof Uint8Array);
+  assert.strictEqual(buf.byteLength, AFAN_HEADER_BYTES + 30 * AFAN_NUM_BS);
+  const dv = new DataView(buf.buffer);
+  assert.strictEqual(dv.getUint32(0, true), AFAN_MAGIC);
+  assert.strictEqual(buf[4], 2);   // version
+  assert.strictEqual(buf[5], 30);  // fps
+  assert.strictEqual(buf[6], 52);  // numBS
+  assert.strictEqual(dv.getUint32(8, true), 30);
+
+  const { fps, numFrames, frames: out } = parseAfan(buf);
+  assert.strictEqual(fps, 30);
+  assert.strictEqual(numFrames, 30);
+  assert.strictEqual(out.length, 30);
+  for (let f = 0; f < 30; f++) {
+    for (let i = 0; i < 52; i++) {
+      assert(Math.abs(frames[f][i] - out[f][i]) < 0.01, `frame ${f} bs ${i}: ${frames[f][i]} vs ${out[f][i]}`);
+    }
+  }
+}
+
+// ── AFAN streaming chunks ────────────────────────────────────────────────
+{
+  async function* gen() {
+    for await (const f of lipsyncStream('streaming chunks test', 2000, { fps: 30 })) {
+      const v = new Float32Array(52);
+      for (let i = 0; i < 52; i++) v[i] = f.blendshapes[i].value;
+      yield v;
+    }
+  }
+  const chunks = [];
+  for await (const c of afanChunks(gen(), 30, 15)) chunks.push(c);
+  assert(chunks.length >= 4); // 60 frames / 15 per chunk
+  let total = 0;
+  for (const c of chunks) {
+    const { numFrames } = parseAfan(c);
+    total += numFrames;
+  }
+  assert.strictEqual(total, 60);
 }
 
 console.log('All tests passed.');

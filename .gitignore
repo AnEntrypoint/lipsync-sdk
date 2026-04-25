@@ -7,3 +7,5 @@ node_modules/
 *.stackdump
 .gm-stop-verified
 .talkinghead-upstream/
+.gm/
+rs-learn.db

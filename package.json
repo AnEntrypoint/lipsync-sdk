@@ -1,6 +1,6 @@
 {
   "name": "lipsync-sdk",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Fast text-driven lipsync codec — Oculus viseme word→blendshape conversion (TalkingHead-derived) plus ARKit mapping and AFAN binary streaming for downstream tools",
   "main": "lipsync-sdk-node.mjs",
@@ -11,13 +11,15 @@
       "default": "./lipsync-sdk-node.mjs"
     },
     "./core": "./lipsync-core.mjs",
-    "./floosie": "./lipsync-floosie.mjs"
+    "./floosie": "./lipsync-floosie.mjs",
+    "./afan": "./lipsync-afan.mjs"
   },
   "files": [
     "lipsync-core.mjs",
     "lipsync-sdk-browser.js",
     "lipsync-sdk-node.mjs",
     "lipsync-floosie.mjs",
+    "lipsync-afan.mjs",
     "modules/",
     "NOTICE"
   ],

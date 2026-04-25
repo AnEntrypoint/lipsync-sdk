@@ -42,7 +42,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/AnEntrypoint/A2F.git"
+    "url": "https://github.com/AnEntrypoint/lipsync-sdk.git"
   },
   "license": "MIT"
 }

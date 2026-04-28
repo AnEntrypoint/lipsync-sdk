@@ -1,0 +1,16 @@
+title: "lipsync-sdk"
+tagline: "avatar lipsync SDK"
+description: "drive a 3D avatar's mouth from audio in real time."
+repo: "https://github.com/AnEntrypoint/lipsync-sdk"
+url: "https://anentrypoint.github.io/lipsync-sdk"
+year: 2026
+keywords:
+  - "lipsync"
+  - "sdk"
+  - "247420"
+  - "anentrypoint"
+accent_from: "#f97583"
+accent_to: "#ffa657"
+glyph: "◒"
+code: "034"
+category: "voice"

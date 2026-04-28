@@ -1,0 +1,23 @@
+id: home
+title: Home
+hero:
+  heading: "lipsync-sdk"
+  subheading: "avatar lipsync SDK"
+  body: "drive a 3D avatar's mouth from audio in real time."
+  badges:
+    - { label: "lipsync" }
+    - { label: "sdk" }
+    - { label: "voice" }
+  ctas:
+    - { label: "GitHub", href: "https://github.com/AnEntrypoint/lipsync-sdk", primary: true }
+    - { label: "247420", href: "https://247420.xyz" }
+features:
+  heading: "Why lipsync-sdk"
+  items:
+    - { name: "lipsync", desc: "flagship trait of lipsync-sdk." }
+    - { name: "sdk", desc: "core capability of lipsync-sdk." }
+quickstart:
+  heading: Quick start
+  lines:
+    - { kind: "cmt", text: "# source" }
+    - { kind: "cmd", text: "git clone https://github.com/AnEntrypoint/lipsync-sdk.git" }

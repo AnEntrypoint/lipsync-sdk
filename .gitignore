@@ -9,3 +9,5 @@ node_modules/
 .talkinghead-upstream/
 .gm/
 rs-learn.db
+dist/
+.codeinsight/
